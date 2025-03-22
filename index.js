@@ -18,9 +18,26 @@ app.use(cors());
 
 // ✅ Connect to MongoDB
 mongoose
-  .connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+  .connect(process.env.MONGO_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    serverSelectionTimeoutMS: 15000, // Increase timeout to 15 seconds
+    socketTimeoutMS: 45000, // Socket timeout to prevent drops
+  })
   .then(() => console.log("✅ MongoDB Connected"))
-  .catch((err) => console.error("❌ MongoDB Connection Error:", err));
+  .catch((err) => {
+    console.error("❌ MongoDB Connection Error:", err);
+    process.exit(1);
+  });
+
+mongoose.connection.on("error", (err) => {
+  console.error("❌ Mongoose Connection Error:", err);
+});
+
+mongoose.connection.on("disconnected", () => {
+  console.warn("⚠️ MongoDB Disconnected. Reconnecting...");
+});
+
 
 // ✅ Order Schema
 const orderSchema = new mongoose.Schema({
