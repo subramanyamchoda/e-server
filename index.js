@@ -185,6 +185,11 @@ app.put("/api/orders/:id/status", async (req, res) => {
   }
 });
 
+app.use('/',(req,res)=>{
+
+    res.send("test the website")
+})
+
 // ✅ Start Server
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
