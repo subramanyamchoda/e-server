@@ -17,18 +17,12 @@ app.use(express.json());
 app.use(cors());
 
 // ✅ MongoDB Connection
-mongoose
-  .connect(process.env.MONGO_URI)
-  .then(() => console.log("✅ MongoDB Connected"))
-  .catch((err) => {
-    console.error("❌ MongoDB Connection Error:", err);
-    process.exit(1);
-  });
+mongoose.connect(process.env.MONGO_URI)
+    .then(() => console.log("MongoDB connected successfully!"))
+    .catch((error) => console.log(error))
 
-// ✅ Handle Disconnection
-mongoose.connection.on("disconnected", () => {
-  console.warn("⚠️ MongoDB Disconnected");
-});
+
+
 // ✅ Order Schema
 const orderSchema = new mongoose.Schema({
   name: { type: String, required: true },
