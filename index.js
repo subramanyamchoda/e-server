@@ -147,6 +147,7 @@ app.post("/api/orders", async (req, res) => {
       return res.status(400).json({ message: "Email is required" });
     }
 
+    
     const order = new Order(req.body);
     await order.save();
 
@@ -159,6 +160,18 @@ app.post("/api/orders", async (req, res) => {
     res.status(500).json({ message: "Error saving order", error: error.message });
   }
 });
+
+// ✅ Get All Orders API
+app.get("/orders", async (req, res) => {
+  try {
+    const orders = await Order.find();
+    res.json(orders);
+  } catch (error) {
+    console.error("❌ Error fetching orders:", error);
+    res.status(500).json({ message: "Error fetching orders", error: error.message });
+  }
+});
+
 
 // ✅ Update Order Status API
 app.put("/api/orders/:id/status", async (req, res) => {
