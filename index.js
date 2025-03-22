@@ -18,19 +18,17 @@ app.use(cors());
 
 // ✅ MongoDB Connection
 mongoose
-  .connect(process.env.MONGO_URI, {
-    serverSelectionTimeoutMS: 15000,
-    socketTimeoutMS: 45000,
-  })
+  .connect(process.env.MONGO_URI)
   .then(() => console.log("✅ MongoDB Connected"))
   .catch((err) => {
     console.error("❌ MongoDB Connection Error:", err);
     process.exit(1);
   });
 
-mongoose.connection.on("error", (err) => console.error("❌ Mongoose Error:", err));
-mongoose.connection.on("disconnected", () => console.warn("⚠️ MongoDB Disconnected"));
-
+// ✅ Handle Disconnection
+mongoose.connection.on("disconnected", () => {
+  console.warn("⚠️ MongoDB Disconnected");
+});
 // ✅ Order Schema
 const orderSchema = new mongoose.Schema({
   name: { type: String, required: true },
@@ -197,5 +195,5 @@ app.put("/api/orders/:id/status", async (req, res) => {
 });
 
 // ✅ Start Server
-const PORT = process.env.PORT || 10000;
+const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
