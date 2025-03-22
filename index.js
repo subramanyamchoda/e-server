@@ -17,9 +17,17 @@ app.use(express.json());
 app.use(cors());
 
 // ✅ MongoDB Connection
-mongoose.connect(process.env.MONGO_URI)
-    .then(() => console.log("MongoDB connected successfully!"))
-    .catch((error) => console.log(error))
+mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+  serverSelectionTimeoutMS: 20000, // 20 seconds
+  socketTimeoutMS: 45000, // 45 seconds
+})
+  .then(() => console.log("✅ MongoDB connected successfully!"))
+  .catch((error) => {
+    console.error("❌ MongoDB connection error:", error);
+    process.exit(1); // Stop the server if DB fails to connect
+  });
 
 
 
@@ -156,13 +164,19 @@ app.post("/api/orders", async (req, res) => {
 // ✅ Get All Orders API
 app.get("/api/orders", async (req, res) => {
   try {
-    const orders = await Order.find();
+    const { page = 1, limit = 10 } = req.query;
+    const orders = await Order.find()
+      .sort({ date: -1 }) // Get latest orders first
+      .limit(Number(limit))
+      .skip((Number(page) - 1) * Number(limit));
+    
     res.json(orders);
   } catch (error) {
     console.error("❌ Error fetching orders:", error);
     res.status(500).json({ message: "Error fetching orders", error: error.message });
   }
 });
+
 
 // ✅ Update Order Status API
 app.put("/api/orders/:id/status", async (req, res) => {
