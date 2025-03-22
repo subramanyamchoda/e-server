@@ -16,11 +16,11 @@ const io = new Server(server, {
 app.use(express.json());
 app.use(cors());
 
-// ✅ Connect to MongoDB
+// ✅ MongoDB Connection
 mongoose
   .connect(process.env.MONGO_URI, {
-    serverSelectionTimeoutMS: 15000, // Wait 15s before throwing timeout
-    socketTimeoutMS: 45000, // Prevent socket disconnections
+    serverSelectionTimeoutMS: 15000,
+    socketTimeoutMS: 45000,
   })
   .then(() => console.log("✅ MongoDB Connected"))
   .catch((err) => {
@@ -28,15 +28,8 @@ mongoose
     process.exit(1);
   });
 
-mongoose.connection.on("error", (err) => {
-  console.error("❌ Mongoose Connection Error:", err);
-});
-
-mongoose.connection.on("disconnected", () => {
-  console.warn("⚠️ MongoDB Disconnected. Reconnecting...");
-});
-
-
+mongoose.connection.on("error", (err) => console.error("❌ Mongoose Error:", err));
+mongoose.connection.on("disconnected", () => console.warn("⚠️ MongoDB Disconnected"));
 
 // ✅ Order Schema
 const orderSchema = new mongoose.Schema({
@@ -54,8 +47,8 @@ const orderSchema = new mongoose.Schema({
     },
   ],
   totalPrice: Number,
-  status: { type: String, default: "Pending" }, // Order Status
-  date: { type: Date, default: Date.now }, // Removed auto-delete
+  status: { type: String, default: "Pending" },
+  date: { type: Date, default: Date.now },
 });
 
 const Order = mongoose.model("Order", orderSchema);
@@ -73,11 +66,18 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", () => {
-    console.log("⚡ A user disconnected");
+    console.log(`⚡ User disconnected: ${socket.id}`);
+    for (const [email, socketId] of Object.entries(userSockets)) {
+      if (socketId === socket.id) {
+        delete userSockets[email];
+        console.log(`❌ Removed disconnected user: ${email}`);
+        break;
+      }
+    }
   });
 });
 
-// ✅ Nodemailer Email Transporter
+// ✅ Email Transporter
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
@@ -86,24 +86,24 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// ✅ Function to Send Order Email (Customer & Admin)
+// ✅ Function to Send Order Email
 const sendOrderEmail = async (order) => {
-  const emailContent = `
-    <h2>Order Confirmation</h2>
-    <p>Dear ${order.name},</p>
-    <p>Thank you for your order! Your order will be delivered within 1 day.</p>
-    <h3>Order Details:</h3>
-    <ul>${order.cart
-      .map(
-        (item) =>
-          `<li>${item.name} - Qty: ${item.quantity} - Price: $${item.price * item.quantity}</li>`
-      )
-      .join("")}</ul>
-    <p><strong>Total Price: $${order.totalPrice}</strong></p>
-    <p>Delivery Address: ${order.street}, ${order.city}</p>
-  `;
-
   try {
+    const emailContent = `
+      <h2>Order Confirmation</h2>
+      <p>Dear ${order.name},</p>
+      <p>Thank you for your order! Your order will be delivered within 1 day.</p>
+      <h3>Order Details:</h3>
+      <ul>${order.cart
+        .map(
+          (item) =>
+            `<li>${item.name} - Qty: ${item.quantity} - Price: $${item.price * item.quantity}</li>`
+        )
+        .join("")}</ul>
+      <p><strong>Total Price: $${order.totalPrice}</strong></p>
+      <p>Delivery Address: ${order.street}, ${order.city}</p>
+    `;
+
     // ✅ Send Email to Customer
     await transporter.sendMail({
       from: process.env.EMAIL_USER,
@@ -119,34 +119,21 @@ const sendOrderEmail = async (order) => {
       from: process.env.EMAIL_USER,
       to: process.env.ADMIN_EMAIL,
       subject: "New Order Received",
-      html: `<h2>New Order Placed</h2>
-             <p>Customer Name: ${order.name}</p>
-             <p>Email: ${order.email}</p>
-             <p>Phone: ${order.phone}</p>
-             <h3>Order Details:</h3>
-             <ul>${order.cart
-               .map(
-                 (item) =>
-                   `<li>${item.name} - Qty: ${item.quantity} - Price: $${item.price * item.quantity}</li>`
-               )
-               .join("")}</ul>
-             <p><strong>Total Price: $${order.totalPrice}</strong></p>
-             <p>Delivery Address: ${order.street}, ${order.city}</p>`,
+      html: emailContent,
     });
 
     console.log("✅ Order email sent to admin!");
 
-    // ✅ Emit real-time notification to Admin
+    // ✅ Emit real-time notification
     io.emit("newOrder", {
       title: "New Order Received",
       message: `A new order has been placed by ${order.name} - Total: $${order.totalPrice}`,
     });
 
-    // ✅ Emit real-time notification to Customer
     if (userSockets[order.email]) {
       io.to(userSockets[order.email]).emit("orderSuccess", {
         title: "Order Placed",
-        message: `Your order has been placed successfully! Estimated delivery: 1 day. 🚚`,
+        message: `Your order has been placed successfully! 🚚`,
       });
     }
 
@@ -155,19 +142,16 @@ const sendOrderEmail = async (order) => {
   }
 };
 
-// ✅ Order API - Create Order
+// ✅ Create Order API
 app.post("/api/orders", async (req, res) => {
   try {
     console.log("📦 New Order Received:", req.body);
-
-    if (!req.body.email) {
-      return res.status(400).json({ message: "Email is required" });
-    }
+    if (!req.body.email) return res.status(400).json({ message: "Email is required" });
 
     const order = new Order(req.body);
     await order.save();
 
-    // ✅ Send email notification
+    // ✅ Send Email Notification
     await sendOrderEmail(order);
 
     res.status(201).json({ message: "Order placed successfully", order });
@@ -177,7 +161,7 @@ app.post("/api/orders", async (req, res) => {
   }
 });
 
-// ✅ Get All Orders
+// ✅ Get All Orders API
 app.get("/api/orders", async (req, res) => {
   try {
     const orders = await Order.find();
@@ -188,19 +172,16 @@ app.get("/api/orders", async (req, res) => {
   }
 });
 
-// ✅ Update Order Status
+// ✅ Update Order Status API
 app.put("/api/orders/:id/status", async (req, res) => {
   try {
     const { status } = req.body;
     const order = await Order.findByIdAndUpdate(req.params.id, { status }, { new: true });
 
-    if (!order) {
-      return res.status(404).json({ message: "Order not found" });
-    }
+    if (!order) return res.status(404).json({ message: "Order not found" });
 
     console.log(`🚀 Order Status Updated: ${order.email} - ${status}`);
 
-    // ✅ Emit real-time notification to Customer
     if (userSockets[order.email]) {
       io.to(userSockets[order.email]).emit("orderUpdate", {
         title: "Order Update",
@@ -216,5 +197,5 @@ app.put("/api/orders/:id/status", async (req, res) => {
 });
 
 // ✅ Start Server
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 10000;
 server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
