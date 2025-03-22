@@ -19,10 +19,8 @@ app.use(cors());
 // ✅ Connect to MongoDB
 mongoose
   .connect(process.env.MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    serverSelectionTimeoutMS: 15000, // Increase timeout to 15 seconds
-    socketTimeoutMS: 45000, // Socket timeout to prevent drops
+    serverSelectionTimeoutMS: 15000, // Wait 15s before throwing timeout
+    socketTimeoutMS: 45000, // Prevent socket disconnections
   })
   .then(() => console.log("✅ MongoDB Connected"))
   .catch((err) => {
@@ -37,6 +35,7 @@ mongoose.connection.on("error", (err) => {
 mongoose.connection.on("disconnected", () => {
   console.warn("⚠️ MongoDB Disconnected. Reconnecting...");
 });
+
 
 
 // ✅ Order Schema
