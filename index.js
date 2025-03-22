@@ -132,7 +132,7 @@ const sendOrderEmail = async (order) => {
 };
 
 // ✅ Create Order API
-app.post("/api/orders", async (req, res) => {
+app.post("/orders", async (req, res) => {
   try {
     console.log("📦 New Order Received:", req.body);
     if (!req.body.email) return res.status(400).json({ message: "Email is required" });
