@@ -6,7 +6,7 @@ const http = require("http");
 const { Server } = require("socket.io");
 require("dotenv").config();
 
-// ✅ Initialize Express App & Server
+// ✅ Initialize Express & Server
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -16,7 +16,7 @@ const io = new Server(server, {
 app.use(express.json());
 app.use(cors());
 
-// ✅ MongoDB Connection
+// ✅ Connect to MongoDB
 mongoose
   .connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => console.log("✅ MongoDB Connected"))
@@ -38,8 +38,8 @@ const orderSchema = new mongoose.Schema({
     },
   ],
   totalPrice: Number,
-  status: { type: String, default: "Pending" }, // ✅ Added Order Status
-  date: { type: Date, default: Date.now, expires: 86400 }, // Auto-delete after 24 hours
+  status: { type: String, default: "Pending" }, // Order Status
+  date: { type: Date, default: Date.now }, // Removed auto-delete
 });
 
 const Order = mongoose.model("Order", orderSchema);
@@ -51,7 +51,6 @@ const userSockets = {};
 io.on("connection", (socket) => {
   console.log("⚡ A user connected:", socket.id);
 
-  // Store user's email with socket ID
   socket.on("register", (email) => {
     userSockets[email] = socket.id;
     console.log(`🔗 User Registered: ${email} - Socket ID: ${socket.id}`);
@@ -96,6 +95,7 @@ const sendOrderEmail = async (order) => {
       subject: "Order Confirmation - Your Order is Placed!",
       html: emailContent,
     });
+
     console.log("✅ Order email sent to customer!");
 
     // ✅ Send Email to Admin
@@ -117,6 +117,7 @@ const sendOrderEmail = async (order) => {
              <p><strong>Total Price: $${order.totalPrice}</strong></p>
              <p>Delivery Address: ${order.street}, ${order.city}</p>`,
     });
+
     console.log("✅ Order email sent to admin!");
 
     // ✅ Emit real-time notification to Admin
@@ -138,7 +139,7 @@ const sendOrderEmail = async (order) => {
   }
 };
 
-// ✅ Order API Endpoint
+// ✅ Order API - Create Order
 app.post("/api/orders", async (req, res) => {
   try {
     console.log("📦 New Order Received:", req.body);
@@ -147,7 +148,6 @@ app.post("/api/orders", async (req, res) => {
       return res.status(400).json({ message: "Email is required" });
     }
 
-    
     const order = new Order(req.body);
     await order.save();
 
@@ -161,8 +161,8 @@ app.post("/api/orders", async (req, res) => {
   }
 });
 
-// ✅ Get All Orders API
-app.get("/orders", async (req, res) => {
+// ✅ Get All Orders
+app.get("/api/orders", async (req, res) => {
   try {
     const orders = await Order.find();
     res.json(orders);
@@ -172,8 +172,7 @@ app.get("/orders", async (req, res) => {
   }
 });
 
-
-// ✅ Update Order Status API
+// ✅ Update Order Status
 app.put("/api/orders/:id/status", async (req, res) => {
   try {
     const { status } = req.body;
