@@ -6,11 +6,12 @@ const orderSchema = new mongoose.Schema({
   email: { type: String, required: true },
   street: { type: String, required: true },
   city: { type: String, required: true },
-  cart: [
+  cart: [ 
     {
-      product: { type: mongoose.Schema.Types.ObjectId, ref: "Product", required: true },
-      quantity: { type: Number, required: true },
-      price: { type: Number, required: true },
+      name: String,
+      img: String,
+      price: Number,
+      quantity: Number,
     },
   ],
   totalPrice: Number,
