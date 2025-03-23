@@ -44,25 +44,6 @@ router.put("/:id/status", async (req, res) => {
   }
 });
 
-router.get("/:orderId", async (req, res) => {
-  try {
-    const { orderId } = req.params;
 
-    if (!orderId) {
-      return res.status(400).json({ message: "Order ID is required" });
-    }
-
-    const order = await Order.findById(orderId).populate("cart.product");
-
-    if (!order) {
-      return res.status(404).json({ message: "Order not found" });
-    }
-
-    res.json(order);
-  } catch (error) {
-    console.error("Error fetching order:", error);
-    res.status(500).json({ message: "Server error" });
-  }
-});
 
 module.exports = router;
